@@ -1940,6 +1940,10 @@
   ✓ it records assertions against the same per-dataset key
   ✓ it leaves a test without a dataset keyed by class and method
 
+   PASS  Tests\Unit\Plugins\Tia\Storage
+  ✓ it uses a project-relative configured directory
+  ✓ it uses an absolute configured directory
+
    PASS  Tests\Unit\Plugins\Tia\TableExtractor
   ✓ fromSql() → it extracts tables from plain DML
   ✓ fromSql() → it extracts tables from joins
