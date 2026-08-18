@@ -1455,6 +1455,14 @@
   ✓ multiple times with repeat iterator with multiple dataset ('c') / ('d') @ repetition 2 of 2
   ✓ multiple times with repeat iterator with multiple dataset ('c') / ('e') @ repetition 2 of 2
   ✓ multiple times with repeat iterator with multiple dataset ('c') / ('f') @ repetition 2 of 2
+  ✓ multiple times with named dataset arguments ('Taylor', 'taylor@laravel.com') @ repetition 1 of 2
+  ✓ multiple times with named dataset arguments ('Nuno', 'enunomaduro@gmail.com') @ repetition 1 of 2
+  ✓ multiple times with named dataset arguments ('Taylor', 'taylor@laravel.com') @ repetition 2 of 2
+  ✓ multiple times with named dataset arguments ('Nuno', 'enunomaduro@gmail.com') @ repetition 2 of 2
+  ✓ multiple times with named dataset arguments and repeat iterator ('Taylor', 'taylor@laravel.com') @ repetition 1 of 2
+  ✓ multiple times with named dataset arguments and repeat iterator ('Nuno', 'enunomaduro@gmail.com') @ repetition 1 of 2
+  ✓ multiple times with named dataset arguments and repeat iterator ('Taylor', 'taylor@laravel.com') @ repetition 2 of 2
+  ✓ multiple times with named dataset arguments and repeat iterator ('Nuno', 'enunomaduro@gmail.com') @ repetition 2 of 2
   ✓ describe blocks → multiple times @ repetition 1 of 3
   ✓ describe blocks → multiple times @ repetition 2 of 3
   ✓ describe blocks → multiple times @ repetition 3 of 3
@@ -1764,6 +1772,7 @@
   ✓ it shows the correct description for long texts with newlines
   ✓ it shows the correct description for arrays with many elements
   ✓ it shows the correct description of datasets with html
+  ✓ it does not treat a two element dataset of class names as a callable
 
    PASS  Tests\Unit\Expectations\OppositeExpectation
   ✓ it throw expectation failed exception with string argument
@@ -2229,4 +2238,4 @@
   ✓ pass with dataset with ('my-datas-set-value')
   ✓ within describe → pass with dataset with ('my-datas-set-value')
 
-  Tests:    2 deprecated, 4 warnings, 5 incomplete, 2 notices, 40 todos, 35 skipped, 1572 passed (3413 assertions)
+  Tests:    2 deprecated, 4 warnings, 5 incomplete, 2 notices, 40 todos, 35 skipped, 1581 passed (3434 assertions)
