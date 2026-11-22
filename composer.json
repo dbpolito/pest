@@ -60,6 +60,7 @@
         ]
     },
     "require-dev": {
+        "illuminate/testing": "^12.0",
         "pestphp/pest-dev-tools": "^5.0.0",
         "pestphp/pest-plugin-browser": "^5.2.0",
         "pestphp/pest-plugin-phpstan": "^5.3.1",

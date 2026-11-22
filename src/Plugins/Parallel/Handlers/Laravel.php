@@ -12,6 +12,7 @@ use ParaTest\Options;
 use ParaTest\RunnerInterface;
 use Pest\Contracts\Plugins\HandlesArguments;
 use Pest\Plugins\Concerns\HandleArguments;
+use Pest\Plugins\Parallel\Paratest\Laravel12Runner;
 use Pest\Plugins\Parallel\Paratest\WrapperRunner;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -93,6 +94,11 @@ final class Laravel implements HandlesArguments
             }
         }
 
-        return $this->pushArgument('--runner=\Illuminate\Testing\ParallelRunner', $arguments);
+        $laravelVersion = InstalledVersions::getVersion('laravel/framework') ?? '';
+        $runner = str_starts_with($laravelVersion, '12.')
+            ? Laravel12Runner::class
+            : ParallelRunner::class;
+
+        return $this->pushArgument('--runner=\\'.$runner, $arguments);
     }
 }
