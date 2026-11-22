@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace Pest\Plugins\Tia;
 
 use Pest\Plugins\Tia\Contracts\Lockfile;
-use Symfony\Component\Finder\Finder;
+use Pest\Support\Git;
+use Symfony\Component\Process\Exception\ExceptionInterface as ProcessException;
+use Symfony\Component\Process\Process;
 
 /**
  * @internal
  */
 final readonly class Fingerprint
 {
-    private const int SCHEMA_VERSION = 18;
+    private const int SCHEMA_VERSION = 19;
 
     /**
      * @var array<int, class-string<Lockfile>>
@@ -27,18 +29,25 @@ final readonly class Fingerprint
      *     environmental: array<string, int|string|null>,
      * }
      */
-    public static function compute(string $projectRoot): array
+    public static function compute(string $projectRoot, ?ConfigurationFile $configuration = null): array
     {
+        $structural = [
+            'schema' => self::SCHEMA_VERSION,
+            'composer_lock' => self::composerLockHash($projectRoot),
+            'phpunit_configuration' => ($configuration ?? ConfigurationFile::projectDefault())->fingerprint($projectRoot),
+            'vite_config' => self::viteConfigHash($projectRoot),
+            'package_lock' => self::packageLockHash($projectRoot),
+            'js_config' => self::jsConfigHash($projectRoot),
+        ];
+
+        $prefix = self::projectPrefix($projectRoot);
+
+        if ($prefix !== '') {
+            $structural['project_prefix'] = $prefix;
+        }
+
         return [
-            'structural' => [
-                'schema' => self::SCHEMA_VERSION,
-                'composer_lock' => self::composerLockHash($projectRoot),
-                'phpunit_xml' => self::trackedHash($projectRoot, 'phpunit.xml'),
-                'phpunit_xml_dist' => self::trackedHash($projectRoot, 'phpunit.xml.dist'),
-                'vite_config' => self::viteConfigHash($projectRoot),
-                'package_lock' => self::packageLockHash($projectRoot),
-                'js_config' => self::jsConfigHash($projectRoot),
-            ],
+            'structural' => $structural,
             'environmental' => [
                 'php_minor' => PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION,
 
@@ -275,17 +284,34 @@ final readonly class Fingerprint
             return $cache[$key];
         }
 
-        if (! is_dir($projectRoot.'/.git') && ! is_file($projectRoot.'/.git')) {
+        if (! self::isGitRepository($projectRoot)) {
             return $cache[$key] = true;
         }
 
-        $finder = (new Finder)
-            ->in($projectRoot)
-            ->depth('== 0')
-            ->name($relativePath)
-            ->ignoreVCSIgnored(true);
+        $process = new Process(['git', 'check-ignore', '-q', '--', $relativePath], $projectRoot);
+        $process->setTimeout(5.0);
 
-        return $cache[$key] = $finder->hasResults();
+        try {
+            $process->run();
+        } catch (ProcessException) {
+            return $cache[$key] = true;
+        }
+
+        return $cache[$key] = $process->getExitCode() !== 0;
+    }
+
+    private static function projectPrefix(string $projectRoot): string
+    {
+        static $cache = [];
+
+        return $cache[$projectRoot] ??= new Git($projectRoot)->pathPrefix();
+    }
+
+    private static function isGitRepository(string $projectRoot): bool
+    {
+        static $cache = [];
+
+        return $cache[$projectRoot] ??= new Git($projectRoot)->isRepository();
     }
 
     private static function contentHashOrNull(string $path): ?string
