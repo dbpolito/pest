@@ -7,7 +7,6 @@ namespace Pest\Plugins\Tia;
 use Pest\Plugins\Tia\Contracts\Lockfile;
 use Pest\Support\Git;
 use Symfony\Component\Process\Exception\ExceptionInterface as ProcessException;
-use Symfony\Component\Process\Process;
 
 /**
  * @internal
@@ -31,13 +30,16 @@ final readonly class Fingerprint
      */
     public static function compute(string $projectRoot, ?ConfigurationFile $configuration = null): array
     {
+        $configuration ??= ConfigurationFile::projectDefault();
+
         $structural = [
             'schema' => self::SCHEMA_VERSION,
             'composer_lock' => self::composerLockHash($projectRoot),
-            'phpunit_configuration' => ($configuration ?? ConfigurationFile::projectDefault())->fingerprint($projectRoot),
+            'phpunit_configuration' => $configuration->fingerprint($projectRoot),
             'vite_config' => self::viteConfigHash($projectRoot),
             'package_lock' => self::packageLockHash($projectRoot),
             'js_config' => self::jsConfigHash($projectRoot),
+            ...self::commandLineOverrides($projectRoot, $configuration),
         ];
 
         $prefix = self::projectPrefix($projectRoot);
@@ -53,6 +55,17 @@ final readonly class Fingerprint
 
             ],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function commandLineOverrides(string $projectRoot, ConfigurationFile $configuration): array
+    {
+        return array_filter([
+            'phpunit_bootstrap' => $configuration->bootstrapFingerprint($projectRoot),
+            'phpunit_include_path' => $configuration->includePathFingerprint($projectRoot),
+        ], fn (?string $value): bool => $value !== null);
     }
 
     /**
@@ -288,16 +301,11 @@ final readonly class Fingerprint
             return $cache[$key] = true;
         }
 
-        $process = new Process(['git', 'check-ignore', '-q', '--', $relativePath], $projectRoot);
-        $process->setTimeout(5.0);
-
         try {
-            $process->run();
+            return $cache[$key] = ! new Git($projectRoot)->succeeds(['check-ignore', '-q', '--', $relativePath]);
         } catch (ProcessException) {
             return $cache[$key] = true;
         }
-
-        return $cache[$key] = $process->getExitCode() !== 0;
     }
 
     private static function projectPrefix(string $projectRoot): string

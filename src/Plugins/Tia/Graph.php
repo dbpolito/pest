@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Pest\Plugins\Tia;
 
+use JsonException;
 use Pest\Factories\TestCaseFactory;
 use Pest\Factories\TestCaseMethodFactory;
+use Pest\Support\Arr;
 use Pest\Support\Container;
 use Pest\Support\View;
 use Pest\TestSuite;
@@ -19,6 +21,10 @@ use PHPUnit\TextUI\Configuration\Registry;
 final class Graph
 {
     public const string WORKSPACE_BRANCH_PREFIX = '@workspace:';
+
+    private const int LEGACY_SCHEMA = 1;
+
+    private const int SCHEMA = 2;
 
     /**
      * @var array<string, string>
@@ -589,7 +595,7 @@ final class Graph
     {
         $generated = [];
 
-        foreach ($this->fileIds as $path => $id) {
+        foreach ($this->files as $id => $path) {
             $hash = $this->livewireGeneratedHash($path);
 
             if ($hash === null) {
@@ -1126,7 +1132,7 @@ final class Graph
                 }
             }
 
-            $names = array_keys($normalised);
+            $names = Arr::stringKeys($normalised);
             sort($names);
 
             $this->testInertiaComponents[$testRel] = $names;
@@ -1156,7 +1162,7 @@ final class Graph
                 continue;
             }
 
-            $keys = array_keys($names);
+            $keys = Arr::stringKeys($names);
             sort($keys);
             $out[$path] = $keys;
         }
@@ -1640,7 +1646,7 @@ final class Graph
     {
         $survivors = array_fill_keys($keep, true);
 
-        foreach (array_keys($this->baselines) as $branch) {
+        foreach (Arr::stringKeys($this->baselines) as $branch) {
             if (str_starts_with($branch, self::WORKSPACE_BRANCH_PREFIX)) {
                 continue;
             }
@@ -1698,7 +1704,7 @@ final class Graph
      */
     public static function branchesIn(string $json): array
     {
-        $data = json_decode($json, true);
+        $data = ByteSafeJson::decode($json);
 
         if (! is_array($data) || ! is_array($data['baselines'] ?? null)) {
             return [];
@@ -1706,8 +1712,8 @@ final class Graph
 
         $branches = [];
 
-        foreach (array_keys($data['baselines']) as $branch) {
-            if (is_string($branch) && $branch !== '') {
+        foreach (Arr::stringKeys($data['baselines']) as $branch) {
+            if ($branch !== '') {
                 $branches[] = $branch;
             }
         }
@@ -1715,11 +1721,35 @@ final class Graph
         return $branches;
     }
 
-    public static function decode(string $json, string $projectRoot): ?self
+    /**
+     * @return array<array-key, mixed>|null
+     */
+    private static function payload(string $json): ?array
     {
         $data = json_decode($json, true);
 
-        if (! is_array($data) || ($data['schema'] ?? null) !== 1) {
+        if (! is_array($data)) {
+            return null;
+        }
+
+        if (($data['schema'] ?? null) === self::LEGACY_SCHEMA) {
+            return $data;
+        }
+
+        if (($data['schema'] ?? null) !== self::SCHEMA) {
+            return null;
+        }
+
+        $restored = ByteSafeJson::restore($data, $json);
+
+        return is_array($restored) ? $restored : null;
+    }
+
+    public static function decode(string $json, string $projectRoot): ?self
+    {
+        $data = self::payload($json);
+
+        if ($data === null) {
             return null;
         }
 
@@ -1818,8 +1848,8 @@ final class Graph
 
             if (is_array($baseline['tree'] ?? null)) {
                 foreach ($baseline['tree'] as $path => $hash) {
-                    if (is_string($path) && is_string($hash)) {
-                        $tree[$path] = $hash;
+                    if (is_string($hash)) {
+                        $tree[(string) $path] = $hash;
                     }
                 }
             }
@@ -1922,10 +1952,13 @@ final class Graph
         return $out;
     }
 
-    public function encode(): ?string
+    /**
+     * @throws JsonException
+     */
+    public function encode(): string
     {
         $payload = [
-            'schema' => 1,
+            'schema' => self::SCHEMA,
             'fingerprint' => $this->fingerprint,
             'files' => $this->files,
             'edges' => $this->edges,
@@ -1935,9 +1968,7 @@ final class Graph
             'js_file_to_components' => $this->jsFileToComponents,
         ];
 
-        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
-
-        return $json === false ? null : $json;
+        return ByteSafeJson::encode($payload);
     }
 
     private function relative(string $path): ?string

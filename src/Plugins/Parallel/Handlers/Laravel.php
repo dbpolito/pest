@@ -14,6 +14,7 @@ use Pest\Contracts\Plugins\HandlesArguments;
 use Pest\Plugins\Concerns\HandleArguments;
 use Pest\Plugins\Parallel\Paratest\Laravel12Runner;
 use Pest\Plugins\Parallel\Paratest\WrapperRunner;
+use Pest\Support\InstalledPackages;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -44,7 +45,7 @@ final class Laravel implements HandlesArguments
      */
     private function whenUsingLaravel(array $arguments, Closure $closure): array
     {
-        $isLaravelApplication = InstalledVersions::isInstalled('laravel/framework', false);
+        $isLaravelApplication = InstalledPackages::has('laravel/framework', false);
         $isLaravelPackage = class_exists(TestCase::class);
 
         if ($isLaravelApplication && ! $isLaravelPackage) {
@@ -67,14 +68,14 @@ final class Laravel implements HandlesArguments
      */
     private function ensureEnvironmentVariables(array $arguments): array
     {
-        $_ENV['LARAVEL_PARALLEL_TESTING'] = 1;
+        $_SERVER['LARAVEL_PARALLEL_TESTING'] = $_ENV['LARAVEL_PARALLEL_TESTING'] = 1;
 
         if ($this->hasArgument('--recreate-databases', $arguments)) {
-            $_ENV['LARAVEL_PARALLEL_TESTING_RECREATE_DATABASES'] = 1;
+            $_SERVER['LARAVEL_PARALLEL_TESTING_RECREATE_DATABASES'] = $_ENV['LARAVEL_PARALLEL_TESTING_RECREATE_DATABASES'] = 1;
         }
 
         if ($this->hasArgument('--drop-databases', $arguments)) {
-            $_ENV['LARAVEL_PARALLEL_TESTING_DROP_DATABASES'] = 1;
+            $_SERVER['LARAVEL_PARALLEL_TESTING_DROP_DATABASES'] = $_ENV['LARAVEL_PARALLEL_TESTING_DROP_DATABASES'] = 1;
         }
 
         $arguments = $this->popArgument('--recreate-databases', $arguments);
